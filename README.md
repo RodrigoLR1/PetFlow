@@ -11,7 +11,7 @@ alterar o status de um pet no sistema, o tutor recebe notificações
 automáticas. Além disso, a plataforma utiliza IA generativa para criar
 legendas de redes sociais a partir de fotos dos animais e automatiza a
 coleta de avaliações de satisfação pós-atendimento.
-dwadwadad
+dwadwadad 1234567890
  Grupo:
  
 • Arthur Pereira Silva

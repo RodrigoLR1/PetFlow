@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetPanel Pro | Gestão Inteligente</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        /* ─────────────────────────────────────────
+           DESIGN TOKENS (Modern SaaS Palette)
+        ───────────────────────────────────────── */
+        const T = {
+          bg: "#05070a", 
+          bg2: "#0b0f16", 
+          bg3: "#121823", 
+          card: "rgba(17, 24, 35, 0.7)",
+          border: "rgba(255,255,255,0.06)", 
+          borderHighlight: "rgba(255,107,43,0.3)",
+          accent: "#ff6b2b", 
+          accent2: "#ff9a5a", 
+          teal: "#00e5b4",
+          text: "#f8fafc", 
+          muted: "#94a3b8", 
+          muted2: "#475569",
+          red: "#ef4444", 
+          green: "#10b981", 
+          blue: "#3b82f6", 
+          yellow: "#f59e0b",
+        };
+
+        const API_BASE = "http://localhost:3001/api";
+
+        async function apiFetch(path, options = {}) {
+          try {
+            const res = await fetch(`${API_BASE}${path}`, {
+              headers: { "Content-Type": "application/json", ...options.headers },
+              ...options,
+              body: options.body ? JSON.stringify(options.body) : undefined,
+            });
+            if (!res.ok) throw new Error(`Erro ${res.status}`);
+            return res.json();
+          } catch (e) {
+            throw e;
+          }
+        }
+
+        const STATUS_CONFIG = {
+          checkin: { label: "Check-in", color: T.yellow, bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", emoji: "⏳" },
+          banho:   { label: "Em Atendimento", color: T.blue, bg: "rgba(59,130,246,0.1)", border: "rgba(59,130,246,0.3)", emoji: "🚿" },
+          pronto:  { label: "Pronto p/ Retirada", color: T.green, bg: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", emoji: "✨" },
+        };
+
+        /* ─────────────────────────────────────────
+           GLOBAL STYLES
+        ───────────────────────────────────────── */
+        const STYLES = `
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { 
+            font-family: 'Inter', sans-serif; 
+            background: ${T.bg}; 
+            color: ${T.text}; 
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+          }
+          h1, h2, h3, .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+          
+          ::-webkit-scrollbar { width: 6px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb { background: ${T.muted2}; border-radius: 10px; }
+
+          @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes pulse-border { 0% { border-color: ${T.border}; } 50% { border-color: ${T.borderHighlight}; } 100% { border-color: ${T.border}; } }
+
+          .animate-slide-up { animation: slideUp 0.4s ease forwards; }
+          .animate-fade-in { animation: fadeIn 0.3s ease forwards; }
+
+          input, select, textarea {
+            background: ${T.bg3};
+            border: 1px solid ${T.border};
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+          }
+          input:focus { border-color: ${T.accent}; box-shadow: 0 0 0 3px rgba(255,107,43,0.15); }
+
+          .glass-card {
+            background: ${T.card};
+            backdrop-filter: blur(12px);
+            border: 1px solid ${T.border};
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .glass-card:hover {
+            border-color: ${T.borderHighlight};
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+          }
+
+          .btn-primary {
+            background: linear-gradient(135deg, ${T.accent}, ${T.accent2});
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255,107,43,0.3);
+          }
+          .btn-primary:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(255,107,43,0.4); }
+          .btn-ghost {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid ${T.border};
+            color: ${T.text};
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+        `;
+
+        function GlobalStyles() {
+          useEffect(() => {
+            const el = document.createElement("style");
+            el.textContent = STYLES;
+            document.head.appendChild(el);
+            return () => document.head.removeChild(el);
+          }, []);
+          return null;
+        }
+
+        /* ─────────────────────────────────────────
+           COMPONENTS
+        ───────────────────────────────────────── */
+
+        const Icon = ({ name }) => {
+          const icons = {
+            dashboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
+            clients: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            ai: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l-1.41-1.41M2 12h2M20 12h2M6.34 17.66l1.41-1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="3"/></svg>,
+            settings: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+          };
+          return icons[name] || null;
+        };
+
+        function Sidebar({ active, setActive }) {
+          const menu = [
+            { id: 'dashboard', label: 'Painel de Fluxo', icon: 'dashboard' },
+            { id: 'clients', label: 'Gestão de Clientes', icon: 'clients' },
+            { id: 'ai', label: 'Studio IA', icon: 'ai' },
+            { id: 'settings', label: 'Configurações', icon: 'settings' },
+          ];
+
+          return (
+            <div style={{ width: 260, background: T.bg2, borderRight: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${T.accent}, ${T.accent2})`, display: 'grid', placeItems: 'center', fontSize: 20, boxShadow: `0 8px 20px ${T.accent}44` }}>🐾</div>
+                <span className="font-jakarta" style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>Pet<span style={{ color: T.accent }}>Panel</span></span>
+              </div>
+
+              <nav style={{ flex: 1, padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {menu.map(item => {
+                  const isActive = active === item.id;
+                  return (
+                    <button 
+                      key={item.id} 
+                      onClick={() => setActive(item.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12,
+                        border: 'none', background: isActive ? `rgba(255,107,43,0.1)` : 'transparent',
+                        color: isActive ? T.text : T.muted, fontWeight: isActive ? 600 : 400,
+                        cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
+                      }}
+                      onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                      onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <span style={{ color: isActive ? T.accent : T.muted }}><Icon name={item.icon} /></span>
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div style={{ padding: '24px', borderTop: `1px solid ${T.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: T.bg3, padding: '12px', borderRadius: 16 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: T.blue, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700 }}>AD</div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
+                    <div style={{ fontSize: 11, color: T.muted }}>Plano Pro</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        /* ─────────────────────────────────────────
+           DASHBOARD PAGE
+        ───────────────────────────────────────── */
+        function Dashboard({ pets, setPets, clients, showToast }) {
+          const [showModal, setShowModal] = useState(false);
+
+          const stats = [
+            { label: 'Pets Hoje', val: pets.length, color: T.blue, icon: '🐕' },
+            { label: 'Em Banho', val: pets.filter(p => p.status === 'banho').length, color: T.accent, icon: '🚿' },
+            { label: 'Prontos', val: pets.filter(p => p.status === 'pronto').length, color: T.green, icon: '✨' },
+          ];
+
+          const movePet = async (id, newStatus) => {
+            setPets(ps => ps.map(p => p.id === id ? { ...p, status: newStatus } : p));
+            try {
+              await apiFetch(`/pets/${id}/status`, { method: 'PATCH', body: { status: newStatus } });
+              showToast(`Notificação enviada ao tutor de ${pets.find(p => p.id === id).name}!`, 'success');
+            } catch (e) {
+              showToast('Erro ao atualizar status', 'error');
+            }
+          };
+
+          return (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg }}>
+              <header style={{ padding: '32px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <h1 className="font-jakarta" style={{ fontSize: 28, fontWeight: 800 }}>Painel de Operações</h1>
+                  <p style={{ color: T.muted, marginTop: 4 }}>Gerencie o fluxo de banho e tosa em tempo real.</p>
+                </div>
+                <button className="btn-primary" onClick={() => setShowModal(true)}>+ Novo Check-in</button>
+              </header>
+
+              <div style={{ padding: '0 40px 32px', overflowY: 'auto', height: '100%' }}>
+                {/* Stats Summary */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 32 }}>
+                  {stats.map(s => (
+                    <div key={s.label} className="glass-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: `${s.color}22`, color: s.color, display: 'grid', placeItems: 'center', fontSize: 24 }}>{s.icon}</div>
+                      <div>
+                        <div style={{ fontSize: 12, color: T.muted, fontWeight: 500 }}>{s.label}</div>
+                        <div className="font-jakarta" style={{ fontSize: 24, fontWeight: 800 }}>{s.val}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Kanban Board */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, alignItems: 'start' }}>
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <div style={{ 
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        padding: '0 12px', color: cfg.color, fontSize: 14, fontWeight: 700 
+                      }}>
+                        <span>{cfg.emoji} {cfg.label}</span>
+                        <span style={{ background: `${cfg.color}22`, padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>
+                          {pets.filter(p => p.status === key).length}
+                      </span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {pets.filter(p => p.status === key).map(pet => (
+                          <div key={pet.id} className="glass-card animate-slide-up" style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                              <div style={{ width: 40, height: 40, borderRadius: '50%', background: pet.color, display: 'grid', placeItems: 'center', fontSize: 18 }}>{pet.avatar}</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 700, fontSize: 15 }}>{pet.name}</div>
+                                <div style={{ fontSize: 12, color: T.muted }}>{pet.breed}</div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12, color: T.muted, marginBottom: 12, paddingLeft: '52px' }}>👤 {pet.tutor}</div>
+                            <div style={{ display: 'flex', gap: 8, paddingLeft: '52px' }}>
+                              {key !== 'pronto' && (
+                                <button 
+                                  onClick={() => movePet(pet.id, key === 'checkin' ? 'banho' : 'pronto')}
+                                  className="btn-primary" 
+                                  style={{ padding: '6px 12px', fontSize: 11, flex: 1 }}
+                                >
+                                  {key === 'checkin' ? 'Iniciar Banho' : 'Marcar Pronto'}
+                                </button>
+                              )}
+                              {key !== 'checkin' && (
+                                <button 
+                                  onClick={() => movePet(pet.id, key === 'pronto' ? 'banho' : 'checkin')}
+                                  className="btn-ghost" 
+                                  style={{ padding: '6px 12px', fontSize: 11, flex: 1 }}
+                                >
+                                  Voltar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {pets.filter(p => p.status === key).length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '40px', color: T.muted2, border: `2px dashed ${T.border}`, borderRadius: 20, fontSize: 13 }}>
+                            Nenhum pet nesta etapa
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {showModal && <AddPetModal clients={clients} onClose={() => setShowModal(false)} onAdd={async (data) => {
+                const newPet = await apiFetch('/pets', { method: 'POST', body: data });
+                setPets([...pets, newPet]);
+                setShowModal(false);
+                showToast(`${newPet.name} entrou na fila!`, 'success');
+              }} />}
+            </div>
+          );
+        }
+
+        /* ─────────────────────────────────────────
+           AI STUDIO PAGE (The "Wow" Feature)
+        ───────────────────────────────────────── */
+        function AIStudio({ showToast }) {
+          const [petName, setPetName] = useState("");
+          const [breed, setBreed] = useState("");
+          const [service, setService] = useState("Banho + Tosa");
+          const [loading, setLoading] = useState(false);
+          const [result, setResult] = useState(null);
+          const [image, setImage] = useState(null);
+
+          const handleGenerate = async () => {
+            setLoading(true);
+            // Simulating AI response for demo
+            setTimeout(() => {
+              setResult({
+                caption: `Olha só quem ficou ainda mais lindo! 😍 O ${petName || 'nosso amigo'} acabou de finalizar um ${service} e está pronto para arrasar por aí. Quem aguenta tanta fofura? 🐾✨`,
+                hashtags: ["#PetShopLife", "#BanhoETosa", "#PetCare", `#${breed.replace(/\s/g, '')}`],
+              });
+              setLoading(false);
+            }, 1500);
+          };
+
+          return (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg }}>
+              <header style={{ padding: '32px 40px' }}>
+                <h1 className="font-jakarta" style={{ fontSize: 28, fontWeight: 800 }}>Studio de Criação IA</h1>
+                <p style={{ color: T.muted, marginTop: 4 }}>Gere legendas magnéticas para o Instagram em segundos.</p>
+              </header>
+
+              <div style={{ flex: 1, padding: '0 40px 40px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, overflowY: 'auto' }}>
+                {/* Form side */}
+                <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div>
+                    <label style={{ fontSize: 12, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 8 }}>FOTO DO PET</label>
+                    <div 
+                      onClick={() => document.getElementById('fileInput').click()}
+                      style={{ 
+                        border: `2px dashed ${T.border}`, borderRadius: 16, padding: '40px', textAlign: 'center', 
+                        cursor: 'pointer', background: T.bg3, transition: 'all 0.2s',
+                        backgroundImage: image ? `url(${image})` : 'none',
+                        backgroundSize: 'cover', backgroundPosition: 'center'
+                      }}
+                    >
+                      {!image && <div style={{ color: T.muted }}>Clique para upload da foto 📸</div>}
+                    </div>
+                    <input id="fileInput" type="file" style={{ display: 'none' }} onChange={e => setImage(URL.createObjectURL(e.target.files[0]))} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 8 }}>NOME DO PET</label>
+                      <input value={petName} onChange={e => setPetName(e.target.value)} placeholder="Ex: Rex" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 8 }}>RAÇA</label>
+                      <input value={breed} onChange={e => setBreed(e.target.value)} placeholder="Ex: Poodle" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 12, color: T.muted, fontWeight: 600, display: 'block', marginBottom: 8 }}>SERVIÇO REALIZADO</label>
+                    <select value={service} onChange={e => setService(e.target.value)}>
+                      <option>Banho Simples</option>
+                      <option>Banho Completo</option>
+                      <option>Banho + Tosa</option>
+                      <option>Hidratação Premium</option>
+                    </select>
+                  </div>
+
+                  <button className="btn-primary" onClick={handleGenerate} disabled={loading} style={{ marginTop: 12 }}>
+                    {loading ? 'Processando IA...' : '✨ Gerar Legenda Mágica'}
+                  </button>
+                </div>
+
+                {/* Preview side */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  {result ? (
+                    <div className="animate-slide-up" style={{ width: '100%', maxWidth: 400 }}>
+                      <div style={{ 
+                        background: 'white', color: 'black', borderRadius: 32, overflow: 'hidden', 
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '8px solid #222' 
+                      }}>
+                        <div style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #eee' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: T.accent }}></div>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>SeuPetShop</span>
+                        </div>
+                        <div style={{ width: '100%', height: 400, background: image || '#eee', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                        <div style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 700, marginBottom: 8 }}>SeuPetShop <span style={{ fontWeight: 400, color: '#666' }}>há 5 min</span></div>
+                          <div style={{ fontSize: 14, lineHeight: 1.5 }}>{result.caption}</div>
+                          <div style={{ color: T.blue, fontSize: 14, marginTop: 8 }}>{result.hashtags.join(' ')}</div>
+                        </div>
+                      </div>
+                      <button className="btn-ghost" style={{ width: '100%', marginTop: 20 }} onClick={() => {
+                        navigator.clipboard.writeText(`${result.caption}\n\n${result.hashtags.join(' ')}`);
+                        showToast('Copiado para o clipboard!', 'success');
+                      }}>📋 Copiar Legenda</button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: T.muted }}>
+                      <div style={{ fontSize: 64, marginBottom: 16 }}>🪄</div>
+                      <p>Preencha os dados ao lado para ver a mágica acontecer!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        /* ─────────────────────────────────────────
+           MODALS & HELPERS
+        ───────────────────────────────────────── */
+        function AddPetModal({ clients, onClose, onAdd }) {
+          const [form, setForm] = useState({ name: '', breed: '', tutor: '', service: 'Banho Completo', avatar: '🐕', color: T.accent });
+          
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'grid', placeItems: 'center', zIndex: 1000 }}>
+              <div className="glass-card" style={{ width: 500, padding: '32px', animation: 'slideUp 0.3s ease' }}>
+                <h2 className="font-jakarta" style={{ marginBottom: 24, fontSize: 22 }}>Novo Check-in</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <input placeholder="Nome do Pet" onChange={e => setForm({...form, name: e.target.value})} />
+                  <input placeholder="Raça" onChange={e => setForm({...form, breed: e.target.value})} />
+                  <input placeholder="Nome do Tutor" onChange={e => setForm({...form, tutor: e.target.value})} />
+                  <select onChange={e => setForm({...form, service: e.target.value})}>
+                    <option>Banho Simples</option>
+                    <option>Banho Completo</option>
+                    <option>Banho + Tosa</option>
+                    <option>Hidratação Premium</option>
+                  </select>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                    <button className="btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+                    <button className="btn-primary" style={{ flex: 1 }} onClick={() => onAdd({ ...form, id: Date.now(), status: 'checkin' })}>Confirmar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        function Toast({ toasts }) {
+          return (
+            <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {toasts.map(t => (
+                <div key={t.id} className="glass-card animate-slide-up" style={{ 
+                  padding: '16px 24px', borderLeft: `4px solid ${t.type === 'success' ? T.green : T.red}`,
+                  color: 'white', minWidth: 280, boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}>
+                  {t.msg}
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        /* ─────────────────────────────────────────
+           ROOT APP
+        ───────────────────────────────────────── */
+        function App() {
+          const [page, setPage] = useState('dashboard');
+          const [pets, setPets] = useState([]);
+          const [clients, setClients] = useState([]);
+          const [toasts, setToasts] = useState([]);
+          const [loading, setLoading] = useState(true);
+
+          useEffect(() => {
+            async function init() {
+              try {
+                const [p, c] = await Promise.all([apiFetch('/pets'), apiFetch('/clients')]);
+                setPets(p); setClients(c);
+              } catch (e) {
+                console.error("API offline - Usando mock data");
+                setPets([
+                  { id: 1, name: 'Rex', breed: 'Golden', tutor: 'Ana', status: 'checkin', color: T.yellow, avatar: '🐕', service: 'Banho+Tosa' },
+                  { id: 2, name: 'Luna', breed: 'Poodle', tutor: 'Beto', status: 'banho', color: T.blue, avatar: '🐩', service: 'Banho' },
+                  { id: 3, name: 'Mel', breed: 'Yorkie', tutor: 'Caio', status: 'pronto', color: T.green, avatar: '🐶', service: 'Tosa' },
+                ]);
+              } finally { setLoading(false); }
+            }
+            init();
+          }, []);
+
+          const showToast = (msg, type = 'success') => {
+            const id = Date.now();
+            setToasts(prev => [...prev, { id, msg, type }]);
+            setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+          };
+
+          if (loading) return <div style={{ height: '100vh', background: T.bg, display: 'grid', placeItems: 'center', color: 'white' }}>Carregando Sistema...</div>;
+
+          return (
+            <>
+              <GlobalStyles />
+              <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+                <Sidebar active={page} setActive={setPage} />
+                <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                  {page === 'dashboard' && <Dashboard pets={pets} setPets={setPets} clients={clients} showToast={showToast} />}
+                  {page === 'ai' && <AIStudio showToast={showToast} />}
+                  {page === 'clients' && <div style={{ padding: 40, color: T.muted }}>Módulo de Clientes em desenvolvimento...</div>}
+                  {page === 'settings' && <div style={{ padding: 40, color: T.muted }}>Configurações do Sistema em desenvolvimento...</div>}
+                </main>
+              </div>
+              <Toast toasts={toasts} />
+            </>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

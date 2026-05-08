@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mundo da Juquinha — O Desafio do Boss</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ═══ ÁREA DO JOGO ═══ -->
+  <div id="game-wrapper">
+    <div id="game-container">
+      <canvas id="gameCanvas" width="1000" height="600"></canvas>
+      <div class="score-board" id="scoreDisplay">PONTOS: 0</div>
+
+      <div id="bossHealthBar" class="hidden">
+        <div class="boss-bar-label" id="bossBarLabel">CHEFÃO</div>
+        <div class="boss-bar-track"><div id="bossHealthFill"></div></div>
+      </div>
+
+      <!-- GAMEOVER -->
+      <div id="gameOverScreen" class="ui-layer hidden">
+        <h1 style="color:#e74c3c">GAME OVER</h1>
+        <p id="finalScore"></p>
+        <p class="hint">[ ESPAÇO ] · [ W ] · toque para tentar novamente</p>
+      </div>
+
+      <!-- VITÓRIA -->
+      <div id="victoryScreen" class="ui-layer hidden">
+        <h1 style="color:#f1c40f">VITÓRIA!</h1>
+        <p>A Sussuarana foi derrotada!</p>
+        <p id="victoryScore"></p>
+        <p class="hint">[ ESPAÇO ] · [ W ] · toque para jogar novamente</p>
+      </div>
+
+      <!-- MODAL: SALVAR NO RANKING (aparece ao morrer ou vencer) -->
+      <div id="rankSaveModal" class="hidden" style="position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.88);backdrop-filter:blur(4px);">
+        <div class="modal-card">
+          <span class="modal-icon">🏆</span>
+          <h2>ENTRAR NO RANKING?</h2>
+          <p class="modal-sub" id="rankSaveDesc">Registre sua pontuação!</p>
+          <input id="rankSaveInput" type="text" maxlength="12" placeholder="SEU NOME" autocomplete="off" spellcheck="false" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(200,100,20,0.4);border-radius:8px;color:#e8c87a;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;text-align:center;padding:10px;outline:none;margin-bottom:14px;">
+          <button class="btn-primary" id="rankSaveBtn">SALVAR E CONTINUAR</button>
+          <button class="btn-skip" id="rankSkipBtn">Pular — só reiniciar</button>
+        </div>
+      </div>
+
+      <!-- CONTROLES MOBILE -->
+      <div id="mobileControls">
+        <!-- P1 -->
+        <span id="mc-p1-label">P1</span>
+        <div class="mc-btn mc-p1" id="mc-p1-left">◀</div>
+        <div class="mc-btn mc-p1" id="mc-p1-right">▶</div>
+        <div class="mc-btn mc-p1" id="mc-p1-down" style="font-size:14px">▼</div>
+        <div class="mc-btn mc-p1" id="mc-p1-jump" style="font-size:24px;background:rgba(39,174,96,0.2);border-color:rgba(39,174,96,0.5)">A</div>
+        <div class="mc-btn mc-p1" id="mc-p1-shoot" style="background:rgba(142,68,173,0.2);border-color:rgba(142,68,173,0.5);font-size:14px">B☠</div>
+
+        <!-- P2 -->
+        <span id="mc-p2-label" style="display:none">P2</span>
+        <div class="mc-btn mc-p2" id="mc-p2-left" style="display:none">◀</div>
+        <div class="mc-btn mc-p2" id="mc-p2-right" style="display:none">▶</div>
+        <div class="mc-btn mc-p2" id="mc-p2-jump" style="display:none">A</div>
+        <div class="mc-btn mc-p2" id="mc-p2-shoot" style="display:none;font-size:14px">B☠</div>
+
+        <!-- Utilitários -->
+        <div class="mc-btn mc-action" id="mc-p2-join">+ P2</div>
+        <div class="mc-btn mc-action" id="mc-pause">⏸</div>
+      </div>
+
+    </div><!-- /#game-container -->
+  </div><!-- /#game-wrapper -->
+
+  <!-- ═══ PAINÉIS INFORMATIVOS ═══ -->
+  <div class="panels-row">
+
+    <div class="panel">
+      <div class="panel-title">🎮 Controles</div>
+      <div class="ctrl-list">
+        <div class="ctrl-row">
+          <span class="player-badge p1-badge">P1</span>
+          <span><span class="kbd">W</span> pular · <span class="kbd">A</span> <span class="kbd">D</span> mover · <span class="kbd">S</span> agachar · <span class="kbd">F</span> atirar</span>
+        </div>
+        <div class="ctrl-row">
+          <span class="player-badge p2-badge">P2</span>
+          <span><span class="kbd">↑</span> pular · <span class="kbd">←</span> <span class="kbd">→</span> mover · <span class="kbd">↓</span> agachar · <span class="kbd">Shift→</span> atirar</span>
+        </div>
+        <div class="ctrl-row" style="margin-top:4px; font-size:12px; color:var(--c-cinza)">
+          <span class="kbd">ESC</span>&nbsp;pausar &nbsp;|&nbsp; <span class="kbd">ENTER</span>&nbsp;P2 entrar &nbsp;|&nbsp; <span class="kbd">ESPAÇO</span>&nbsp;reiniciar
+        </div>
+      </div>
+      <div class="ctrl-note">
+        🤝 Co-op local: <strong>ENTER</strong> a qualquer momento para P2 entrar!<br>
+        📱 Mobile: use os botões P1 (verde) e P2 (azul) na tela!
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">🌍 Os Mundos</div>
+      <div class="world-list">
+        <div class="world-item">
+          <div class="world-icon">🏜️</div>
+          <div>
+            <div class="world-name">Mundo 1 — Caatinga Seca</div>
+            <div class="world-desc">Sol escaldante, cactos afiados, ratos famintos.</div>
+            <div class="world-pts">Boss → 🦅 Carcará aos 1000 pts</div>
+          </div>
+        </div>
+        <div class="world-item">
+          <div class="world-icon">🌧️</div>
+          <div>
+            <div class="world-name">Mundo 2 — Caatinga na Chuva</div>
+            <div class="world-desc">Chão escorregadio! Controle seu momentum.</div>
+            <div class="world-pts">Boss → 🦔 Tatu-Peixeira aos 2000 pts</div>
+          </div>
+        </div>
+        <div class="world-item">
+          <div class="world-icon">🌿</div>
+          <div>
+            <div class="world-name">Mundo 3 — Caatinga Densa</div>
+            <div class="world-desc">Escuro e perigoso. Inimigos em todo lugar.</div>
+            <div class="world-pts">Boss → 🐆 Sussuarana aos 3000 pts</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">🎁 Power-Ups</div>
+      <div class="pw-grid">
+        <div class="pw-item"><span>⚡</span><div><div class="pw-name">Velocidade</div><div class="pw-desc">Corre 2× mais</div></div></div>
+        <div class="pw-item"><span>🦘</span><div><div class="pw-name">Super Pulo</div><div class="pw-desc">Pulos altíssimos</div></div></div>
+        <div class="pw-item"><span>⭐</span><div><div class="pw-name">Invencível</div><div class="pw-desc">Ignora dano</div></div></div>
+        <div class="pw-item"><span>☠️</span><div><div class="pw-name">Veneno</div><div class="pw-desc">Dispara projéteis</div></div></div>
+        <div class="pw-item"><span>❤️</span><div><div class="pw-name">Vida</div><div class="pw-desc">+1 coração</div></div></div>
+        <div class="pw-item"><span>💥</span><div><div class="pw-name">Combo!</div><div class="pw-desc">Kills = × pontos</div></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">👹 Chefões</div>
+      <div class="boss-list">
+        <div class="boss-item">
+          <span style="font-size:20px">🦅</span>
+          <div><div class="boss-name">Carcará — Senhor dos Céus</div><div class="boss-tip">Voos rasantes + chuva de ovos na 2ª fase. Pule na cabeça!</div></div>
+        </div>
+        <div class="boss-item">
+          <span style="font-size:20px">🦔</span>
+          <div><div class="boss-name">Tatu-Peixeira — Escudo de Espinhos</div><div class="boss-tip">Invulnerável ao quicar. Só ataque quando <em>cansar</em>!</div></div>
+        </div>
+        <div class="boss-item">
+          <span style="font-size:20px">🐆</span>
+          <div><div class="boss-name">Sussuarana — Predadora da Caatinga</div><div class="boss-tip">Sumindo no mato para botes surpresa. Fique em movimento!</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ RANKING ═══ -->
+  <div class="panel panel-full">
+    <div class="rank-header">
+      <div class="panel-title" style="margin-bottom:0">🏆 Ranking</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="rank-tabs">
+          <button class="rank-tab active" onclick="showRankTab('all',this)">🎯 Geral</button>
+          <button class="rank-tab" onclick="showRankTab('champions',this)">🏆 Campeões</button>
+        </div>
+        <button class="btn-clear" onclick="clearRankings()">limpar</button>
+      </div>
+    </div>
+    <br>
+    <div id="rankTableContainer">
+      <p class="rank-empty">Nenhuma pontuação ainda. Jogue e entre para o ranking!</p>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    MUNDO DA JUQUINHA &nbsp;·&nbsp; CAATINGA EDITION v4.0 &nbsp;·&nbsp; FEITO COM ❤️ PARA O SERTÃO
+  </footer>
+
+</div><!-- /.wrapper -->
+
+<script>
+// ── SCALING MOBILE ─────────────────────────────────────────
+(function scaleGame() {
+  function apply() {
+    const wrapper = document.getElementById('game-wrapper');
+    const container = document.getElementById('game-container');
+    const vw = wrapper.clientWidth;
+    if (vw < 1000) {
+      const s = vw / 1000;
+      container.style.transform = `scale(${s})`;
+      wrapper.style.height = (600 * s) + 'px';
+    } else {
+      container.style.transform = 'scale(1)';
+      wrapper.style.height = '600px';
+    }
+  }
+  window.addEventListener('resize', apply);
+  apply();
+})();
+
+// ── RANKING HTML ───────────────────────────────────────────
+let currentRankTab = 'all';
+
+function loadRankings() {
+  try { return JSON.parse(localStorage.getItem('juquinha_v4_rankings') || '[]'); } catch(e) { return []; }
+}
+function saveRankingEntry(name, score, time, won) {
+  const data = loadRankings();
+  data.push({ name:(name||'ANÔNIMO').toUpperCase().slice(0,12), score, time, won, date: new Date().toLocaleDateString('pt-BR') });
+  data.sort((a,b) => b.score - a.score);
+  while(data.length > 60) data.pop();
+  localStorage.setItem('juquinha_v4_rankings', JSON.stringify(data));
+  renderRankings();
+}
+function clearRankings() {
+  if(confirm('Apagar todo o ranking?')) { localStorage.removeItem('juquinha_v4_rankings'); renderRankings(); }
+}
+function showRankTab(tab, btn) {
+  currentRankTab = tab;
+  document.querySelectorAll('.rank-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRankings();
+}
+function renderRankings() {
+  const all = loadRankings();
+  const data = currentRankTab === 'champions' ? all.filter(r => r.won) : all;
+  const container = document.getElementById('rankTableContainer');
+  if(!data.length) {
+    container.innerHTML = `<p class="rank-empty">${currentRankTab==='champions'?'Ninguém zerou ainda. Você será o primeiro?':'Nenhuma pontuação ainda.'}</p>`;
+    return;
+  }
+  const pc = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  const ft = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  container.innerHTML = `<table class="rank-table"><thead><tr>
+    <th>#</th><th>Nome</th><th>Pontos</th><th>Tempo</th><th>Data</th><th></th>
+  </tr></thead><tbody>${data.slice(0,20).map((r,i)=>`
+    <tr>
+      <td class="rank-pos ${pc(i)}">${i+1}</td>
+      <td class="rank-name">${r.name}</td>
+      <td class="rank-score">${r.score.toLocaleString('pt-BR')}</td>
+      <td class="rank-time">${ft(r.time)}</td>
+      <td class="rank-time">${r.date||''}</td>
+      <td class="rank-badge">${r.won?'🏆':''}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+window.saveRankingEntry = saveRankingEntry;
+renderRankings();
+
+// ── RANK SAVE MODAL ────────────────────────────────────────
+function closeRankModal() {
+  document.getElementById('rankSaveModal').classList.add('hidden');
+}
+
+document.getElementById('rankSaveBtn').addEventListener('click', function() {
+  const name = (document.getElementById('rankSaveInput').value.trim() || 'ANÔNIMO').toUpperCase().slice(0,12);
+  // Salva com os dados capturados no momento da morte (não após reset)
+  if (window._pendingRank) {
+    saveRankingEntry(name, window._pendingRank.score, window._pendingRank.time, window._pendingRank.won);
+    window._pendingRank = null;
+  }
+  closeRankModal();
+});
+
+document.getElementById('rankSkipBtn').addEventListener('click', function() {
+  window._pendingRank = null;
+  closeRankModal();
+});
+
+document.getElementById('rankSaveInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('rankSaveBtn').click();
+});
+</script>
+
+<script src="game.js"></script>
+</body>
+</html>

@@ -26,7 +26,7 @@ CREATE TABLE personagem (
     classe        VARCHAR(40),                    -- Mago, Guerreiro, Metamorfo, Mutante...
     email_contato VARCHAR(150),
     data_criacao  DATE         NOT NULL DEFAULT (CURRENT_DATE)
-) ENGINE=InnoDB;
+);
 
 
 -- ============================================================================

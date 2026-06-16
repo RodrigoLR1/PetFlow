@@ -15,8 +15,6 @@
 
 DROP DATABASE IF EXISTS multiverso;
 CREATE DATABASE multiverso
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
 USE multiverso;
 
 CREATE TABLE personagem (
